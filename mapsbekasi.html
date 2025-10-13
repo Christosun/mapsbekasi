@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Leaflet + InfluxDB</title>
+  <title>Maps WM PDAM Tirta Patriot Bekasi</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -331,74 +331,6 @@
 
 </style>
 
-<!-- Tombol chat -->
-<button id="chatButton"><i class="fa-solid fa-message"></i></button>
-
-<!-- Kontainer chat -->
-<div id="chatContainer">
-  <iframe src="https://christosun.github.io/chatbot/chatbot.html"></iframe>
-</div>
-
-<script>
-  const chatBtn = document.getElementById("chatButton");
-  const chatBox = document.getElementById("chatContainer");
-
-  function restartAnimation(el, className) {
-    el.classList.remove(className);
-    // trigger reflow supaya animasi bisa restart
-    void el.offsetWidth;
-    el.classList.add(className);
-  }
-
-  chatBox.addEventListener("animationend", (e) => {
-    if (e.animationName === "slideDownFade") {
-      chatBox.style.display = "none";   // baru disembunyikan setelah animasi selesai
-    }
-    if (e.animationName === "slideUpBounce") {
-      chatBox.style.display = "block";  // pastikan visible setelah buka
-    }
-  });
-
-  function openChat() {
-    chatBox.style.display = "block";
-    chatBox.classList.remove("hide");
-    chatBox.classList.add("show");
-
-    chatBtn.innerHTML = '<i class="fas fa-chevron-down"></i>';
-    chatBtn.classList.remove("closing");
-    restartAnimation(chatBtn, "active");
-  }
-
-  function closeChat() {
-    chatBox.classList.remove("show");
-    chatBox.classList.add("hide");
-
-    chatBtn.innerHTML = '<i class="fa-solid fa-message"></i>';
-    chatBtn.classList.remove("active");
-    restartAnimation(chatBtn, "closing");
-  }
-
-  chatBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (!chatBox.classList.contains("show")) {
-      openChat();
-    } else {
-      closeChat();
-    }
-  });
-
-  // Tutup jika klik di luar
-  document.addEventListener("click", (e) => {
-    if (
-      chatBox.classList.contains("show") &&
-      !chatBox.contains(e.target) &&
-      e.target !== chatBtn
-    ) {
-      closeChat();
-    }
-  });
-</script>
-
 </head>
 <body>
 <div id="map"></div>
@@ -488,22 +420,7 @@
   let labelsVisible=true;
 
   const deviceLocations={
-    "FM-001":[-0.57969,117.08502],
-    "FM-002":[-0.860054,117.21362],
-    "FM-003":[-0.427323,117.009778],
-    "FM-004":[-0.3285,116.83249],
-    "FM-005":[-0.57232,117.26649],
-    "FM-006":[-0.4083402,116.9902031],
-    "FM-007":[-0.52148,116.41944],
-    "FM-008":[0.567008,116.017198],
-    "FM-009":[-0.111113,117.436818],
-    "FM-010":[-0.59382,117.03557],
-    "FM-011":[0.138653,116.376306],
-    "FM-012":[-0.009895,116.415856],
-    "FM-013":[-0.24324,116.8084],
-    "FM-014":[-0.33074,117.38472],
-    "FM-015":[-0.67147,117.22216],
-    "FM-016":[-0.41583,116.29076]
+    "PDAMBekasi1":[-6.241201,106.992393]
   };
 
   let deviceStatus = {}; // 🔹 simpan data terakhir tiap device
@@ -595,7 +512,7 @@
   }
 
   async function getData(){
-    const res = await fetch("https://backend.flotech.co.id/flowdata");
+    const res = await fetch("https://backend.flotech.co.id/flowdatabekasi");
     const data = await res.json();
     return data.map(d=>({device_id:d.device_id,Flowrate:d.Flowrate,Totalizer:d.Totalizer,lat:d.lat,lon:d.lon,_time:d._time}));
   }
