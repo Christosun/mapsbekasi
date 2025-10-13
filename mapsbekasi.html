@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Leaflet + InfluxDB</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; }
+    #map { height: 100vh; }
+    .legend {
+      background: rgba(30, 30, 30, 0.7); padding: 14px; font-size: 14px; border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15); font-family: 'Segoe UI', sans-serif;
+      min-width: 160px; backdrop-filter: blur(4px);
+    }
+    .legend-title { font-weight: bold; margin-bottom: 10px; font-size: 12px; color: #ffffff; }
+    .legend button {
+      width: 100%; padding: 8px 10px; margin-bottom: 6px; background-color: rgba(29, 28, 28, 0.7);
+      border: none; border-radius: 6px; cursor: pointer; text-align: left; transition: all 0.25s ease;
+      font-size: 11px; color: #ffffff; display: flex; align-items: center; gap: 6px;
+    }
+    .legend button:hover { background: rgba(255,255,255,0.15); transform: translateX(4px); }
+
+    .leaflet-control-home {
+      background: rgba(30, 30, 30, 0.7); border: none !important; border-radius: 12px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.65); width: 45px; height: 45px; backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center; cursor: pointer; margin-top: 10px;
+    }
+
+    .leaflet-control-home i {
+      font-size: 22px;
+      color: #ffffff;   /* 🔹 ganti warna sesukamu */
+      transition: color 0.3s ease;
+    }
+    .leaflet-control-home:hover { background-color: #474646; }
+
+    /* Switch button */
+    .switch-control {
+      background: rgba(30, 30, 30, 0.7); backdrop-filter: blur(4px); padding: 8px 12px; border-radius: 20px; display: flex; align-items: center;
+      gap: 8px; font-family: 'Segoe UI', sans-serif; font-size: 12px; color: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .switch {
+      position: relative; display: inline-block; width: 40px; height: 20px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #ccc; transition: .4s; border-radius: 20px;
+    }
+    .slider:before {
+      position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px;
+      background-color: white; transition: .4s; border-radius: 50%;
+    }
+    input:checked + .slider { background-color: #4CAF50; }
+    input:checked + .slider:before { transform: translateX(20px); }
+
+    /* Label besar */
+    .custom-label {
+      background: rgba(30, 30, 30, 0.7); padding: 12px 16px; border-radius: 12px;
+      color: #fff; font-family: 'Segoe UI', sans-serif; font-size: 11px;
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.15); backdrop-filter: blur(4px);
+      min-width: 140px; position: relative; z-index: 1;
+      transition: all 0.25s ease; /* Smooth animasi hover */
+    }
+    .custom-label.hovered {
+      transform: scale(1.15) translateY(-4px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+      border-color: rgba(255, 255, 255, 0.35);
+      z-index: 1000;
+    }
+    .custom-label .device-id {
+      font-weight: bold; font-size: 12px; margin-bottom: 8px; color: #ffffff;
+    }
+    .custom-label .info-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .custom-label .info-row:last-child { margin-bottom: 0; }
+    .custom-label .label { color: #ddd; font-weight: 500; }
+    .custom-label .value { font-weight: bold; color: #fff; }
+
+    /* Mini label */
+    .mini-label {
+    display: inline-block;          /* Pastikan background mengikuti panjang teks */
+    font-weight: bold;
+    font-size: 11px;
+    padding: 4px 8px;                /* Tambah padding supaya teks tidak mepet */
+    border-radius: 6px;
+    background: rgba(30, 30, 30, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+    color: #fbfbfb;
+    white-space: nowrap;             /* Supaya teks tidak turun ke baris baru */
+    line-height: 1.2em;               /* Tinggi baris pas */
+    font-family: 'Segoe UI', sans-serif;
+  }
+
+  /* Tombol chat melayang */
+    #chatButton {
+    position: fixed;
+    bottom: 20px;
+    right: 10px;
+    background: rgba(30, 30, 30, 0.7);
+    border: none; backdrop-filter: blur(4px);
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    font-size: 22px;           /* 🔹 Membesarkan emoji */
+    color: #ffffff;
+    line-height: auto;         /* 🔹 Pastikan emoji vertikalnya center */
+    text-align: center;        /* 🔹 Horizontal center */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    z-index: 9999;
+    padding: 0;                /* 🔹 Hilangkan padding default */
+  }
+
+  #chatButton:hover {
+    background-color: #474646;
+  }
+
+  /* Iframe chat */
+  #chatContainer {
+    position: fixed;
+    bottom: 80px;
+    right: 10px;
+    width: 400px;
+    height: 500px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    overflow: hidden;
+    z-index: 9998;
+    opacity: 0;
+    transform: translateY(100px);
+    visibility: hidden;   /* default tersembunyi */
+  }
+
+  /* buka */
+  #chatContainer.show {
+    visibility: visible;
+    animation: slideUpBounce 0.6s ease forwards;
+  }
+
+  /* tutup */
+  #chatContainer.hide {
+    animation: slideDownFade 0.4s ease forwards;
+  }
+
+  @keyframes slideUpBounce {
+    0%   { opacity: 0; transform: translateY(100%); }
+    60%  { opacity: 1; transform: translateY(-20px); }
+    80%  { transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slideDownFade {
+    0%   { opacity: 1; transform: translateY(0); visibility: visible; }
+    99%  { opacity: 0; transform: translateY(100%); visibility: visible; }
+    100% { opacity: 0; transform: translateY(100%); visibility: hidden; }
+  }
+
+  #chatContainer iframe {
+    width: 100%; height: 100%; border: none;
+  }
+  
+  /* Tambahan animasi interaktif */
+  @keyframes pop {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(0.8); }
+    100% { transform: scale(1); }
+  }
+  #chatButton.active {
+    background: rgba(30, 30, 30, 0.7);
+    font-size: 22px;
+    color: #ffffff;
+    animation: pop 0.5s ease-out; /* sekali muter */
+  }
+  .leaflet-control-home.active {
+    animation: pop 0.5s ease-out;
+  }
+  #chatButton.active:hover {
+    background-color: #474646;
+  }
+  #chatButton.closing {
+    background: rgba(30, 30, 30, 0.7);
+    font-size: 22px;
+    color: #ffffff;
+    animation: pop 0.5s ease-out; /* juga muter saat balik */
+  }
+
+  /* Tombol Zoom (+ dan -) */
+  .leaflet-control-zoom a {
+    background-color: rgba(30, 30, 30, 0.7) !important; color: #fff !important; border: none !important;
+  }
+  .leaflet-control-zoom a:hover {
+    background-color: #474646 !important;
+  }
+  /* Tombol Layer (kotak pojok kanan atas) */
+  /*.leaflet-control-layers {
+    background-color: rgba(30, 30, 30, 0.7) !important; border-radius: 6px !important; border: none !important;
+  }
+  .leaflet-control-layers:hover {
+    background-color: #474646 !important;
+  }*/
+
+  /* Untuk teks di dalam layer switcher */
+  /*.leaflet-control-layers-list {
+    color: #fff;
+  }*/
+
+  /* Layer switcher modern */
+  .leaflet-control-layers {
+    background: rgba(30, 30, 30, 0.7) !important;
+    border-radius: 12px !important;
+    border: none !important;
+    backdrop-filter: blur(4px);
+    padding: 8px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    font-family: 'Segoe UI', sans-serif;
+  }
+
+  /* Hilangkan list default */
+  .leaflet-control-layers-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Style tombol layer */
+  .leaflet-control-layers-selector {
+    display: none; /* sembunyikan radio button */
+  }
+
+  .leaflet-control-layers-base label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    background: rgba(29, 28, 28, 0.7);
+    transition: all 0.25s ease;
+    font-size: 12px;
+    color: #fff;
+  }
+
+  .leaflet-control-layers-base label:hover {
+    background: rgba(255,255,255,0.15);
+    transform: translateX(4px);
+  }
+
+  /* Icon berbeda per layer */
+  .leaflet-control-layers-base label span.icon {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.15);
+    font-size: 12px;
+  }
+
+  /* Style saat aktif */
+  .leaflet-control-layers-base input:checked + span {
+    font-weight: bold;
+    color: #2ecc46;
+  }
+
+  /* Batasi tinggi legend content agar hanya 10 tombol terlihat */
+  #legendContent {
+    max-height: 370px;      /* cukup untuk 10 tombol */
+    overflow-y: auto;       /* aktifkan scroll */
+    padding-right: 4px;     /* kasih sedikit ruang biar teks tidak mepet scrollbar */
+  }
+
+  /* Custom scrollbar elegan */
+  #legendContent::-webkit-scrollbar {
+    width: 6px;             /* slim */
+  }
+
+  #legendContent::-webkit-scrollbar-track {
+    background: transparent; /* track transparan */
+  }
+
+  #legendContent::-webkit-scrollbar-thumb {
+    background: rgba(180, 180, 180, 0.6);  /* abu-abu */
+    border-radius: 4px;                     /* rounded */
+  }
+
+  #legendContent::-webkit-scrollbar-thumb:hover {
+    background: rgba(150, 150, 150, 0.9);   /* lebih gelap saat hover */
+  }
+
+  /* Firefox support */
+  #legendContent {
+    scrollbar-width: thin;                  /* slim */
+    scrollbar-color: rgba(180,180,180,0.6) transparent;
+  }
+  /* Blinking merah untuk marker offline */
+  .blinking-marker {
+    animation: blinkMarker 1s infinite;
+  }
+  @keyframes blinkMarker {
+    0%   { filter: brightness(0.5) saturate(0.5); }
+    50%  { filter: brightness(1.5) saturate(2); }
+    100% { filter: brightness(0.5) saturate(0.5); }
+  }
+
+  /* Blinking merah untuk bulatan legend offline */
+  .blinking-dot {
+    animation: blinkDot 1s infinite;
+  }
+  @keyframes blinkDot {
+    0%,100% { background: red; }
+    50%     { background: darkred; }
+  }
+  .legend.flowrate {
+    background: rgba(30, 30, 30, 0.7);
+    width: 75%;
+    font-size: 11px;   /* 🔹 perkecil teks legend flowrate */
+    line-height: 1.3em; /* 🔹 rapatkan jarak antar baris */
+  }
+
+
+</style>
+
+<!-- Tombol chat -->
+<button id="chatButton"><i class="fa-solid fa-message"></i></button>
+
+<!-- Kontainer chat -->
+<div id="chatContainer">
+  <iframe src="https://christosun.github.io/chatbot/chatbot.html"></iframe>
+</div>
+
+<script>
+  const chatBtn = document.getElementById("chatButton");
+  const chatBox = document.getElementById("chatContainer");
+
+  function restartAnimation(el, className) {
+    el.classList.remove(className);
+    // trigger reflow supaya animasi bisa restart
+    void el.offsetWidth;
+    el.classList.add(className);
+  }
+
+  chatBox.addEventListener("animationend", (e) => {
+    if (e.animationName === "slideDownFade") {
+      chatBox.style.display = "none";   // baru disembunyikan setelah animasi selesai
+    }
+    if (e.animationName === "slideUpBounce") {
+      chatBox.style.display = "block";  // pastikan visible setelah buka
+    }
+  });
+
+  function openChat() {
+    chatBox.style.display = "block";
+    chatBox.classList.remove("hide");
+    chatBox.classList.add("show");
+
+    chatBtn.innerHTML = '<i class="fas fa-chevron-down"></i>';
+    chatBtn.classList.remove("closing");
+    restartAnimation(chatBtn, "active");
+  }
+
+  function closeChat() {
+    chatBox.classList.remove("show");
+    chatBox.classList.add("hide");
+
+    chatBtn.innerHTML = '<i class="fa-solid fa-message"></i>';
+    chatBtn.classList.remove("active");
+    restartAnimation(chatBtn, "closing");
+  }
+
+  chatBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (!chatBox.classList.contains("show")) {
+      openChat();
+    } else {
+      closeChat();
+    }
+  });
+
+  // Tutup jika klik di luar
+  document.addEventListener("click", (e) => {
+    if (
+      chatBox.classList.contains("show") &&
+      !chatBox.contains(e.target) &&
+      e.target !== chatBtn
+    ) {
+      closeChat();
+    }
+  });
+</script>
+
+</head>
+<body>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- <script src="https://unpkg.com/leaflet-gesture-handling"></script> -->
+
+<script>
+  const grayscale = L.tileLayer(`https://mts1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}`);
+
+  const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+
+  // Dark map elegan (Carto Dark Matter)
+  const darkmaps = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png');
+
+  const map = L.map('map',{scrollWheelZoom:false,gestureHandling:true,layers:[grayscale],zoomControl:false}).setView([-2.5, 117], 5);
+
+  // Ctrl+scroll zoom
+  map.getContainer().addEventListener('wheel', e => { if(e.ctrlKey){map.scrollWheelZoom.enable()} else {map.scrollWheelZoom.disable()} });
+
+  // Mobile two-finger drag
+  if(/Mobi|Android/i.test(navigator.userAgent)){
+    map.dragging.disable(); map.touchZoom.enable();
+    map.on('touchstart', e => { if(e.touches.length===2){map.dragging.enable()} else {map.dragging.disable()} });
+  }
+
+  //const baseMaps = { "Grayscale": grayscale, "Satellite": satellite, "Dark Maps": darkmaps };
+  //L.control.layers(baseMaps).addTo(map);
+  const baseMaps = {
+    "<span class='icon'><i class='fa-solid fa-map'></i></span> Grayscale": grayscale,
+    "<span class='icon'><i class='fa-solid fa-globe'></i></span> Satellite": satellite,
+    "<span class='icon'><i class='fa-solid fa-moon'></i></span> Dark Maps": darkmaps
+  };
+  L.control.layers(baseMaps, null, { collapsed: false }).addTo(map);
+
+  // Home button
+  const homeControl = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd: function(map) {
+      const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-home');
+      container.innerHTML = '<i class="fas fa-rotate"></i>';  // 🔹 FontAwesome icon
+      container.onclick = function() {
+        if (window.initialBounds) {
+          map.flyToBounds(window.initialBounds, { paddingTopLeft: [50, 50], paddingBottomRight: [120, 150]});
+        }
+        restartAnimation(container, "active");
+      };
+      return container;
+    }
+  });
+  
+
+  // Switch control
+  const switchControl = L.Control.extend({
+    options:{position:'topright'},
+    onAdd:function(map){
+      const div = L.DomUtil.create('div','switch-control');
+      div.innerHTML = `
+        <label class="switch">
+          <input type="checkbox" id="labelSwitch" checked>
+          <span class="slider"></span>
+        </label>
+        <span id="switchLabel">Label ON</span>
+      `;
+      L.DomEvent.disableClickPropagation(div);
+      return div;
+    }
+  });
+  map.addControl(new switchControl());
+  map.addControl(new homeControl());
+
+  const greenIcon = new L.Icon({
+    iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+    iconSize:[22,35], iconAnchor:[11,35], popupAnchor:[1,-28], shadowSize:[35,35]
+  });
+  const redIcon = new L.Icon({
+    iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+    shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+    iconSize:[22,35], iconAnchor:[11,35], popupAnchor:[1,-28], shadowSize:[35,35]
+  });
+
+  let isFirstLoad=true, hoveredDevice=null;
+  let markerGroup=L.layerGroup().addTo(map);
+  let labelGroup=L.layerGroup().addTo(map);
+  let miniLabelGroup=L.layerGroup().addTo(map);
+  let labelsVisible=true;
+
+  const deviceLocations={
+    "FM-001":[-0.57969,117.08502],
+    "FM-002":[-0.860054,117.21362],
+    "FM-003":[-0.427323,117.009778],
+    "FM-004":[-0.3285,116.83249],
+    "FM-005":[-0.57232,117.26649],
+    "FM-006":[-0.4083402,116.9902031],
+    "FM-007":[-0.52148,116.41944],
+    "FM-008":[0.567008,116.017198],
+    "FM-009":[-0.111113,117.436818],
+    "FM-010":[-0.59382,117.03557],
+    "FM-011":[0.138653,116.376306],
+    "FM-012":[-0.009895,116.415856],
+    "FM-013":[-0.24324,116.8084],
+    "FM-014":[-0.33074,117.38472],
+    "FM-015":[-0.67147,117.22216],
+    "FM-016":[-0.41583,116.29076]
+  };
+
+  let deviceStatus = {}; // 🔹 simpan data terakhir tiap device
+
+  // Legend
+  const legend = L.control({position:'topleft'});
+  legend.onAdd = function(map){
+    const div = L.DomUtil.create('div','legend');
+    div.innerHTML = `<div class="legend-title">CHOOSE LOCATION:</div>`;
+    // 🔹 buat container isi (supaya bisa diupdate berkala)
+    div.innerHTML += `<div id="legendContent"></div>`;
+    return div;
+  };
+
+  const flowLegend = L.control({ position: 'bottomleft' });
+  flowLegend.onAdd = function(map) {
+  const div = L.DomUtil.create('div', 'legend flowrate');
+  div.innerHTML = `
+    <div style="color:white"><span style="color:red;">🔴</span> Low flow: &lt; 10 l/s</div>
+    <div style="color:white"><span style="color:gold;">🟡</span> Medium flow: &lt; 50 l/s</div>
+    <div style="color:white"><span style="color:limegreen;">🟢</span> High flow: &lt; 100 l/s</div>
+    <div style="color:white"><span style="color:deepskyblue;">🔵</span> Very high flow: ≥ 100 l/s</div>
+    <div style="color:white"><span style="color:red;">🔴</span> Red blinking: Device offline</div>
+  `;
+  return div;
+};
+
+  window.zoomTo=function(id){const c=deviceLocations[id]; if(c) map.flyTo(c,18);};
+  legend.addTo(map);
+  flowLegend.addTo(map);
+
+  function getFlowIcon(flowrate, isOnline) {
+    let color = "green"; // default
+    
+    if (flowrate < 10) color = "red";       // Low
+    else if (flowrate < 50) color = "yellow";
+    else if (flowrate < 100) color = "green";
+    else if (flowrate >= 100) color = "blue";
+
+    // Kalau offline → blinking merah
+    if (!isOnline) {
+      return L.divIcon({
+        className: 'blinking-marker',
+        html: `<img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png"
+                style="width:22px;height:35px;" />`,
+        iconAnchor: [11, 35]
+      });
+    }
+
+    // Marker normal dengan warna kategori
+    const urlMap = {
+      red: "marker-icon-2x-red.png",
+      yellow: "marker-icon-2x-yellow.png",
+      green: "marker-icon-2x-green.png",
+      blue: "marker-icon-2x-blue.png"
+    };
+
+    return new L.Icon({
+      iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/${urlMap[color]}`,
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+      iconSize: [22, 35], iconAnchor: [11, 35], popupAnchor: [1, -28], shadowSize: [35, 35]
+    });
+  }
+
+  // 🔹 fungsi untuk update isi legend
+  function updateLegend() {
+    const container = document.getElementById("legendContent");
+    if (!container) return;
+    container.innerHTML = "";
+
+    Object.keys(deviceLocations).forEach(id => {
+      const status = deviceStatus[id] || {};
+      const isOnline = status._time && (Date.now() - new Date(status._time).getTime() < 60000);
+
+      container.innerHTML += `
+      <button onclick="zoomTo('${id}')">
+        <span 
+          class="${isOnline ? '' : 'blinking-dot'}"
+          style="
+            width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;
+            ${isOnline ? 'background:limegreen;' : ''}
+          ">
+        </span>
+        ${id}
+      </button>
+    `;
+
+    });
+  }
+
+  async function getData(){
+    const res = await fetch("https://backend.flotech.co.id/flowdata");
+    const data = await res.json();
+    return data.map(d=>({device_id:d.device_id,Flowrate:d.Flowrate,Totalizer:d.Totalizer,lat:d.lat,lon:d.lon,_time:d._time}));
+  }
+  
+  let isHoverLocked = false; // tanda kalau mouse masih di atas label/marker
+
+  function setHover(active, id) {
+    if (active) {
+      hoveredDevice = id;
+      isHoverLocked = true;
+    } else {
+      hoveredDevice = null;
+      isHoverLocked = false;
+    }
+
+    document.querySelectorAll('.custom-label').forEach(el => {
+      el.classList.remove('hovered');
+      el.style.zIndex = 1;
+      if (el.closest('.leaflet-marker-icon'))
+        el.closest('.leaflet-marker-icon').style.zIndex = '';
+    });
+
+    if (active) {
+      const lbl = document.getElementById(`label-${id}`);
+      if (lbl) {
+        lbl.classList.add('hovered');
+        lbl.style.zIndex = 1000;
+        const markerWrapper = lbl.closest('.leaflet-marker-icon');
+        if (markerWrapper) markerWrapper.style.zIndex = 9999;
+      }
+    }
+  }
+
+  async function updateMap(){
+    const data = await getData();
+    // 🔹 simpan status device
+    data.forEach(d => { deviceStatus[d.device_id] = d; });
+
+    // 🔹 update legend setiap refresh data
+    updateLegend();
+    markerGroup.clearLayers(); labelGroup.clearLayers(); miniLabelGroup.clearLayers();
+    const bounds=[];
+
+    data.forEach(d=>{
+      if(!isFinite(d.lat)||!isFinite(d.lon)) return;
+
+      // ✅ cek apakah device online (< 1 menit)
+      const isOnline = d._time && (Date.now() - new Date(d._time).getTime() < 60000);
+      const icon = getFlowIcon(d.Flowrate, isOnline);
+      const marker = L.marker([d.lat,d.lon], { icon })
+        .on('mouseover',()=>setHover(true,d.device_id))
+        .on('mouseout',()=>setHover(false,d.device_id))
+        .on('click', () => { map.flyTo([d.lat, d.lon], 18); });
+
+      const labelHTML=`
+        <div class="custom-label" id="label-${d.device_id}">
+          <div class="device-id">${d.device_id}</div>
+          <div class="info-row"><span class="label">Flowrate:</span><span class="value">${d.Flowrate.toFixed(2)} l/s</span></div>
+          <div class="info-row"><span class="label">Totalizer:</span><span class="value">${d.Totalizer.toFixed(0)} m³</span></div>
+          <div class="info-row"><span class="label">Time:</span><span class="value">${
+            (() => {
+              const dt = new Date(d._time);
+              return `${dt.getDate()}/${dt.getMonth() + 1}/${dt.getFullYear()}, ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`;
+            })()
+          }</span></div>
+        </div>
+      `;
+      const label = L.marker([d.lat, d.lon], {
+        icon: L.divIcon({ className: '', html: labelHTML, iconAnchor: [0, 0] })
+      })
+        .on('mouseover', () => setHover(true, d.device_id))
+        .on('mouseout', () => setHover(false, d.device_id))
+        .on('click', () => { // ✅ klik label -> zoom
+          map.flyTo([d.lat, d.lon], 18);
+        });
+
+      // Label kecil
+      const miniLabel = L.marker([d.lat, d.lon], {
+        icon: L.divIcon({
+          className: '',
+          html: `<div class="mini-label">${d.device_id}</div>`,
+          iconAnchor: [28, 0]
+        })
+      })
+        .on('click', () => { // ✅ klik label kecil -> zoom
+          map.flyTo([d.lat, d.lon], 18);
+        });
+
+
+      markerGroup.addLayer(marker);
+      labelGroup.addLayer(label);
+      miniLabelGroup.addLayer(miniLabel);
+      bounds.push([d.lat,d.lon]);
+    });
+
+    if(!labelsVisible){ map.removeLayer(labelGroup); map.addLayer(miniLabelGroup); }
+    else { map.addLayer(labelGroup); map.removeLayer(miniLabelGroup); }
+
+    if(isFirstLoad && bounds.length>0){
+      window.initialBounds=L.latLngBounds(bounds);
+      map.fitBounds(initialBounds,{paddingTopLeft:[50,50],paddingBottomRight:[120,150]});
+      isFirstLoad=false;
+    }
+
+    // restore hover jika mouse masih di atas label/marker
+    if (isHoverLocked && hoveredDevice) {
+      setHover(true, hoveredDevice);
+    }
+  }
+  // Switch toggle
+  document.addEventListener('change',e=>{
+    if(e.target.id==='labelSwitch'){
+      labelsVisible=e.target.checked;
+      document.getElementById('switchLabel').innerText = labelsVisible ? 'Label ON' : 'Label OFF';
+      if(labelsVisible){ map.addLayer(labelGroup); map.removeLayer(miniLabelGroup); }
+      else { map.removeLayer(labelGroup); map.addLayer(miniLabelGroup); }
+    }
+  });
+
+  // Restore hover state setelah refresh
+  if (hoveredDevice) {
+    setHover(true, hoveredDevice);
+  }
+
+  updateMap();
+  setInterval(updateMap,5000);
+</script>
+</body>
+</html>
