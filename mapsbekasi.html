@@ -96,61 +96,6 @@
     font-family: 'Segoe UI', sans-serif;
   }
 
-  /* Tombol chat melayang */
-    #chatButton {
-    position: fixed;
-    bottom: 20px;
-    right: 10px;
-    background: rgba(30, 30, 30, 0.7);
-    border: none; backdrop-filter: blur(4px);
-    border-radius: 50%;
-    width: 45px;
-    height: 45px;
-    font-size: 22px;           /* 🔹 Membesarkan emoji */
-    color: #ffffff;
-    line-height: auto;         /* 🔹 Pastikan emoji vertikalnya center */
-    text-align: center;        /* 🔹 Horizontal center */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-    z-index: 9999;
-    padding: 0;                /* 🔹 Hilangkan padding default */
-  }
-
-  #chatButton:hover {
-    background-color: #474646;
-  }
-
-  /* Iframe chat */
-  #chatContainer {
-    position: fixed;
-    bottom: 80px;
-    right: 10px;
-    width: 400px;
-    height: 500px;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    overflow: hidden;
-    z-index: 9998;
-    opacity: 0;
-    transform: translateY(100px);
-    visibility: hidden;   /* default tersembunyi */
-  }
-
-  /* buka */
-  #chatContainer.show {
-    visibility: visible;
-    animation: slideUpBounce 0.6s ease forwards;
-  }
-
-  /* tutup */
-  #chatContainer.hide {
-    animation: slideDownFade 0.4s ease forwards;
-  }
-
   @keyframes slideUpBounce {
     0%   { opacity: 0; transform: translateY(100%); }
     60%  { opacity: 1; transform: translateY(-20px); }
@@ -164,9 +109,7 @@
     100% { opacity: 0; transform: translateY(100%); visibility: hidden; }
   }
 
-  #chatContainer iframe {
-    width: 100%; height: 100%; border: none;
-  }
+ 
   
   /* Tambahan animasi interaktif */
   @keyframes pop {
@@ -174,12 +117,7 @@
     40%  { transform: scale(0.8); }
     100% { transform: scale(1); }
   }
-  #chatButton.active {
-    background: rgba(30, 30, 30, 0.7);
-    font-size: 22px;
-    color: #ffffff;
-    animation: pop 0.5s ease-out; /* sekali muter */
-  }
+  
   .leaflet-control-home.active {
     animation: pop 0.5s ease-out;
   }
@@ -200,18 +138,6 @@
   .leaflet-control-zoom a:hover {
     background-color: #474646 !important;
   }
-  /* Tombol Layer (kotak pojok kanan atas) */
-  /*.leaflet-control-layers {
-    background-color: rgba(30, 30, 30, 0.7) !important; border-radius: 6px !important; border: none !important;
-  }
-  .leaflet-control-layers:hover {
-    background-color: #474646 !important;
-  }*/
-
-  /* Untuk teks di dalam layer switcher */
-  /*.leaflet-control-layers-list {
-    color: #fff;
-  }*/
 
   /* Layer switcher modern */
   .leaflet-control-layers {
@@ -357,8 +283,6 @@
     map.on('touchstart', e => { if(e.touches.length===2){map.dragging.enable()} else {map.dragging.disable()} });
   }
 
-  //const baseMaps = { "Grayscale": grayscale, "Satellite": satellite, "Dark Maps": darkmaps };
-  //L.control.layers(baseMaps).addTo(map);
   const baseMaps = {
     "<span class='icon'><i class='fa-solid fa-map'></i></span> Grayscale": grayscale,
     "<span class='icon'><i class='fa-solid fa-globe'></i></span> Satellite": satellite,
