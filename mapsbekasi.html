@@ -272,7 +272,7 @@
   // Dark map elegan (Carto Dark Matter)
   const darkmaps = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png');
 
-  const map = L.map('map',{scrollWheelZoom:false,gestureHandling:true,layers:[grayscale],zoomControl:false}).setView([-2.5, 117], 5);
+  const map = L.map('map',{scrollWheelZoom:false,gestureHandling:true,layers:[grayscale],zoomControl:false, attributionControl:false}).setView([-2.5, 117], 5);
 
   // Ctrl+scroll zoom
   map.getContainer().addEventListener('wheel', e => { if(e.ctrlKey){map.scrollWheelZoom.enable()} else {map.scrollWheelZoom.disable()} });
