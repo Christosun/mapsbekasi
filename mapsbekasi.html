@@ -121,15 +121,7 @@
   .leaflet-control-home.active {
     animation: pop 0.5s ease-out;
   }
-  #chatButton.active:hover {
-    background-color: #474646;
-  }
-  #chatButton.closing {
-    background: rgba(30, 30, 30, 0.7);
-    font-size: 22px;
-    color: #ffffff;
-    animation: pop 0.5s ease-out; /* juga muter saat balik */
-  }
+
 
   /* Tombol Zoom (+ dan -) */
   .leaflet-control-zoom a {
@@ -305,6 +297,13 @@
       return container;
     }
   });
+
+  function restartAnimation(el, className) {
+    el.classList.remove(className);           // hapus dulu class aktif
+    void el.offsetWidth;                      // trigger reflow (reset animasi)
+    el.classList.add(className);              // tambahkan kembali class agar animasi berjalan ulang
+  }
+
   
 
   // Switch control
