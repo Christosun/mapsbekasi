@@ -352,7 +352,7 @@
   const legend = L.control({position:'topleft'});
   legend.onAdd = function(map){
     const div = L.DomUtil.create('div','legend');
-    div.innerHTML = `<div class="legend-title">CHOOSE LOCATION:</div>`;
+    div.innerHTML = `<div class="legend-title">LOCATION LIST:</div>`;
     // 🔹 buat container isi (supaya bisa diupdate berkala)
     div.innerHTML += `<div id="legendContent"></div>`;
     return div;
@@ -409,6 +409,7 @@
   }
 
   // 🔹 fungsi untuk update isi legend
+  // 🔹 fungsi untuk update isi legend
   function updateLegend() {
     const container = document.getElementById("legendContent");
     if (!container) return;
@@ -416,21 +417,32 @@
 
     Object.keys(deviceLocations).forEach(id => {
       const status = deviceStatus[id] || {};
+      const flow = status.Flowrate ?? 0;
       const isOnline = status._time && (Date.now() - new Date(status._time).getTime() < 60000);
 
-      container.innerHTML += `
-      <button onclick="zoomTo('${id}')">
-        <span 
-          class="${isOnline ? '' : 'blinking-dot'}"
-          style="
-            width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;
-            ${isOnline ? 'background:limegreen;' : ''}
-          ">
-        </span>
-        ${id}
-      </button>
-    `;
+      // Tentukan warna sesuai dengan flowrate (sama seperti marker)
+      let color = "limegreen"; // default
+      if (flow < 10) color = "red";
+      else if (flow < 50) color = "gold";
+      else if (flow < 100) color = "limegreen";
+      else if (flow >= 100) color = "deepskyblue";
 
+      // 🔹 Jika offline, tampilkan blinking merah
+      const dotClass = isOnline ? "" : "blinking-dot";
+      const dotStyle = isOnline
+        ? `background:${color};`
+        : ""; // blinking-dot akan override warna
+
+      container.innerHTML += `
+        <button onclick="zoomTo('${id}')">
+          <span 
+            class="${dotClass}"
+            style="width:10px;height:10px;border-radius:50%;
+                  display:inline-block;margin-right:6px;${dotStyle}">
+          </span>
+          ${id}
+        </button>
+      `;
     });
   }
 
